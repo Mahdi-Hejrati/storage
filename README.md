@@ -7,14 +7,16 @@ Storage.Sql.SqlService.DefaultInstance = new Storage.Sql.SqlService(ConnectionSt
 
 
 Query Data
-var result = Storage.Sql.SqlService.DefaultInstance.Xq(TableName)
-	.setfields("FileName", "realdbfieldsname AS field2", "some expersion as field3")
-	.And("z.field", valuetocompare)
-	.Or("z.field2", value2, Op.Gt)
-	.join_lo("LEFT OUTER JOIN t2 ON t2.id=z.t2id")
-	.Select();
 
-	result is the query results 
+
+	var result = Storage.Sql.SqlService.DefaultInstance.Xq(TableName)
+		.setfields("FileName", "realdbfieldsname AS field2", "some expersion as field3")
+		.And("z.field", valuetocompare)
+		.Or("z.field2", value2, Op.Gt)
+		.join_lo("LEFT OUTER JOIN t2 ON t2.id=z.t2id")
+		.Select();
+
+	//result is the query results 
 
 	foreach(var q in result){
 		q.getAs<long>("fieldname", defaultvalue);
@@ -30,6 +32,11 @@ var result = Storage.Sql.SqlService.DefaultInstance.Xq(TableName)
 		Forward = // forward converter
 		Backward = // backward converter
 	});
+
+
+##To be continued
+
+
 
 
 
