@@ -14,6 +14,35 @@ namespace Storage.Core
             DataAdapter.globalFormatters["money"] = new MoneyFormatter();
             DataAdapter.globalFormatters["ActivateInfo"] = new ActivateInfoFormatter();
             DataAdapter.globalFormatters["double"] = new DoubleFormatter();
+            DataAdapter.globalFormatters["bvisi"] = new BoolVisibility();
+            DataAdapter.globalFormatters["bnotvisi"] = new BoolNotVisibility();
+        }
+    }
+
+    public class BoolNotVisibility : IDataFormatter
+    {
+        public void getFieldFormatValue(DataAdapter sender, DataAdaperEventArgs e)
+        {
+            e.result = Convert.ToBoolean(e.result) ? System.Windows.Visibility.Collapsed : System.Windows.Visibility.Visible;
+        }
+
+        public void setFieldFormatValue(DataAdapter sender, DataAdaperEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+
+    public class BoolVisibility : IDataFormatter
+    {
+        public void getFieldFormatValue(DataAdapter sender, DataAdaperEventArgs e)
+        {
+            e.result = Convert.ToBoolean(e.result) ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
+        }
+
+        public void setFieldFormatValue(DataAdapter sender, DataAdaperEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 

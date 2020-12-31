@@ -34,7 +34,7 @@ namespace Storage.Core
             }
         }
 
-        private void UpdateAggregate()
+        public void UpdateAggregate()
         {
             var list = this.Aggregate.getAll();
             if (list.Count == 0)
@@ -165,8 +165,7 @@ namespace Storage.Core
         {
             get
             {
-                var x = this.Export(true);
-                return JsonConvert.SerializeObject(x, Formatting.Indented);
+                return StorageUtilis.Fromat_Debug_string(this.ToString());
             }
         }
 
@@ -220,6 +219,19 @@ namespace Storage.Core
         }
 
         public DataStore Aggregate { get; protected set; } = new DataStore();
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append("[");
+            foreach(var q in this)
+            {
+                builder.AppendLine("").Append(q.ToString()).Append(",");
+            }
+            builder.Replace(",", "", builder.Length - 2, 1);
+            builder.AppendLine("").AppendLine("]");
+            return builder.ToString();
+        }
     }
 
 

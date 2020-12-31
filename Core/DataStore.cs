@@ -492,7 +492,7 @@ namespace Storage.Core
         {
             get
             {
-                return DataStore2xml.Convert2xml(this, "");
+                return StorageUtilis.Fromat_Debug_string(this.ToString());
             }
         }
 
@@ -511,6 +511,27 @@ namespace Storage.Core
         {
             Field f = this.getField(fn, () => new List<T>());
             return (List<T>)f._value;
+        }
+
+        public string Format(string format)
+        {
+            return System.Text.RegularExpressions.Regex.Replace(format, @"\{(.*?)\}", 
+                    (q) => 
+                        q.Value.Length > 2 ? Convert.ToString(this[q.Value.Substring(1, q.Value.Length - 2)]) : q.Value
+            );
+        }
+
+        public override string ToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            builder.Append("{");
+            foreach(var fn in this.getAll())
+            {
+                builder.AppendLine("").Append(fn.fn).Append("=").Append(fn.value?.ToString() ?? "NULL").Append(",");
+            }
+            builder.Replace(",", "", builder.Length - 2, 1);
+            builder.AppendLine("").AppendLine("}");
+            return builder.ToString();
         }
     }
 
@@ -613,7 +634,7 @@ namespace Storage.Core
         public object Def { get; set; }
         public bool Asc { get; set; }
     }
-    public class DataStoreComparer : IComparer<DataStore>
+    public class DataStoreComparer : IComparer<DataStore>, IEqualityComparer<DataStore>
     {
         private List<DataStoreComparerFields> fields;
 
@@ -656,6 +677,48 @@ namespace Storage.Core
                     return c;
             }
             return 0;
+        }
+
+        public bool Equals(DataStore x, DataStore y)
+        {
+            return this.Compare(x, y) == 0;
+        }
+
+        public int GetHashCode(DataStore obj)
+        {
+            int hash = 165616554;
+            foreach (var s in fields)
+            {
+                hash = hash * (obj.get(s.Field, s.Def).value?.GetHashCode() ?? 1);
+            }
+            return hash;
+        }
+    }
+
+    static class StorageUtilis
+    {
+        public static string Fromat_Debug_string(string debug)
+        {
+            var d = debug.Split('\n');
+            var idnt = 0;
+            var idnt_str = "";
+            for(var i=0; i<d.Length; i++)
+            {
+                d[i] = idnt_str + d[i];
+                if (d[i].Contains('{') || d[i].Contains('['))
+                {
+                    idnt += 2;
+                    idnt_str = new string(' ', idnt);
+                }
+                if (d[i].Contains('}') || d[i].Contains(']'))
+                {
+                    idnt -= 2;
+                    idnt = Math.Max(idnt, 0);
+                    idnt_str = new string(' ', idnt);
+                }
+            }
+
+            return string.Join("\n", d);
         }
     }
 }

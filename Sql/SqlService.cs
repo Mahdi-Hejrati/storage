@@ -98,6 +98,8 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
             }
         }
 
+        public int ConnectionTimeout { get; private set; } = 300;
+
         public SqlService(string cnn)
         {
             this.connection = new SqlConnection(cnn);
@@ -107,6 +109,26 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
         {
             this.connection = cn;
         }
+
+        //private SqlDataReader SafeExecuteReader(string q, QueryParamList p)
+        //{
+        //    // auto reconnect if Exception throwntry
+        //    try {
+        //        SqlCommand cmd = this.connection.CreateCommand();
+        //        cmd.CommandTimeout = this.ConnectionTimeout;
+        //        cmd.CommandText = q;
+        //        this.LogExecuteSql(cmd.CommandText);
+        //        if (p != null)
+        //            p.items.ForEach(t => cmd.Parameters.Add(t));
+        //        return cmd.ExecuteReader();
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        //this.connection.Close();
+        //        throw ex;
+        //        //Global.Instance.logger.Error("DBSERVICE", sql, ex.ToString());
+        //    }
+        //}
 
         public DataList<DataStore> ExecuteRead(string q, QueryParamList p = null)
         {
@@ -121,6 +143,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
                 try
                 {
                     SqlCommand cmd = this.connection.CreateCommand();
+                    cmd.CommandTimeout = this.ConnectionTimeout;
                     cmd.CommandText = q;
                     this.LogExecuteSql(cmd.CommandText);
 
@@ -155,43 +178,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public DataList<DataStore> ExecuteRead(IQuery q, QueryParamList p = null)
         {
-            DataList<DataStore> ret = new DataList<DataStore>();
-            lock (this.connection)
-            {
-                try
-                {
-                    SqlCommand cmd = this.connection.CreateCommand();
-                    cmd.CommandText = q.getSql();
-                    this.LogExecuteSql(cmd.CommandText);
-
-                    QueryParamList pl = q.getParams();
-                    if (pl != null)
-                        pl.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    if (p != null)
-                        p.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    SqlDataReader r = cmd.ExecuteReader();
-                    try
-                    {
-                        while (r.HasRows && r.Read())
-                        {
-                            ret.Add(new DataStore(r));
-                        }
-                    }
-                    finally
-                    {
-                        r.Close();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    //this.connection.Close();
-                    throw ex;
-                    //Global.Instance.logger.Error("DBSERVICE", sql, ex.ToString());
-                }
-            }
-            return ret;
+            return this.ExecuteRead(q.getSql(), QueryParamList.Join(q.getParams(), p));
         }
 
         public DataTable SelectTable(IQuery q, QueryParamList p = null)
@@ -202,6 +189,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
                 try
                 {
                     SqlCommand cmd = this.connection.CreateCommand();
+                    cmd.CommandTimeout = this.ConnectionTimeout;
                     cmd.CommandText = q.getSql();
                     this.LogExecuteSql(cmd.CommandText);
 
@@ -232,6 +220,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
                 try
                 {
                     SqlCommand cmd = this.connection.CreateCommand();
+                    cmd.CommandTimeout = this.ConnectionTimeout;
                     cmd.CommandText = q;
                     this.LogExecuteSql(cmd.CommandText);
 
@@ -251,29 +240,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public void Execute(IQuery q, QueryParamList p = null)
         {
-            lock (this.connection)
-            {
-                try
-                {
-                    SqlCommand cmd = this.connection.CreateCommand();
-                    cmd.CommandText = q.getSql();
-                    this.LogExecuteSql(cmd.CommandText);
-                    QueryParamList pl = q.getParams();
-                    if (pl != null)
-                        pl.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    if (p != null)
-                        p.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    cmd.ExecuteNonQuery();
-                }
-                catch (Exception ex)
-                {
-                    //this.connection.Close();
-                    throw ex;
-                    //Global.Instance.logger.Error("DBSERVICE", sql, ex.ToString());
-                }
-            }
+            this.Execute(q.getSql(), QueryParamList.Join(q.getParams(), p));
         }
 
         public DataStore SingleRow(string q, QueryParamList p = null)
@@ -289,6 +256,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
                 try
                 {
                     SqlCommand cmd = this.connection.CreateCommand();
+                    cmd.CommandTimeout = this.ConnectionTimeout;
                     cmd.CommandText = q;
                     this.LogExecuteSql(cmd.CommandText);
 
@@ -321,42 +289,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public DataStore SingleRow(IQuery q, QueryParamList p = null)
         {
-            DataStore ret = null;
-            lock (this.connection)
-            {
-                try
-                {
-                    SqlCommand cmd = this.connection.CreateCommand();
-                    cmd.CommandText = q.getSql();
-                    this.LogExecuteSql(cmd.CommandText);
-                    QueryParamList pl = q.getParams();
-                    if (pl != null)
-                        pl.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    if (p != null)
-                        p.items.ForEach(t => cmd.Parameters.Add(t));
-
-                    SqlDataReader r = cmd.ExecuteReader();
-                    try
-                    {
-                        if (r.HasRows && r.Read())
-                        {
-                            ret = new DataStore(r);
-                        }
-                    }
-                    finally
-                    {
-                        r.Close();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    //this.connection.Close();
-                    throw ex;
-                    //Global.Instance.logger.Error("DBSERVICE", sql, ex.ToString());
-                }
-            }
-            return ret;
+            return this.SingleRow<DataStore>(q.getSql(), QueryParamList.Join(q.getParams(), p));
         }
 
         public Field SingleValue(string q, QueryParamList p = null)
@@ -367,7 +300,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public Field SingleValue(IQuery q, QueryParamList p = null)
         {
-            DataStore s = SingleRow(q, p);
+            DataStore s = SingleRow(q.getSql(), QueryParamList.Join(q.getParams(), p));
             return s.getAll()[0];
         }
 
@@ -390,27 +323,6 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
         {
             return new XQ(this, store, table);
         }
-
-
-
-
-        //// select from [TableName] where marizId=[marizId] and also select from [TableName]Detail where masterId = [marizId]
-        //// combine all recordes into result by fieldName, fieldValue
-        //public DataStore VerticalSelect(string TableName, long marizId);
-        //// Save the master and remain fields into detail TableName
-        //public void VerticalSave(string TableName);
-
-
-        public SelectQuery Select(string table = "") { return new SelectQuery(this).table(table); }
-        public UpdateQuery Update(string table = "") { return new UpdateQuery(this).table(table); }
-        public DeleteQuery Delete(string table = "") { return new DeleteQuery(this).table(table); }
-        public InsertQuery Insert(string table = "") { return new InsertQuery(this).table(table); }
-
-
-
-
-
-        
     }
 
     public class QueryParamList
@@ -459,12 +371,30 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
             ds.getAll().ForEach(t => { if (t.fieldType == FieldType.Data) add(t.fn, t.value); });
             return this;
         }
+
+        public static QueryParamList Join(QueryParamList p0, QueryParamList p1)
+        {
+            if (p1 == null || p1.items.Count == 0)
+            {
+                return p0;
+            }
+            QueryParamList ret = new QueryParamList();
+
+            if (p0 != null && p0.items.Count > 0)
+            {
+                ret.items.AddRange(p0.items);
+            }
+            if (p1 != null && p1.items.Count > 0)
+            {
+                ret.items.AddRange(p1.items);
+            }
+            return ret;
+        }
     }
 
     public interface IQuery
     {
         string getSql();
-
         QueryParamList getParams();
     }
 
@@ -585,7 +515,11 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         private string getParamName(string p)
         {
-            var ret = scope + p.Replace(".", "_");
+            foreach(var c in @"~`!@#$%^&*()+-+*/.;:\|[]{}<>?', ")
+            {
+                p = p.Replace(c, '_');
+            }
+            var ret = scope + p;
             var i = 0;
             var t = ret;
             while(paramlist?.items?.Any(x=>x.ParameterName == "@" + t) ?? false)
@@ -955,8 +889,8 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public int Count()
         {
-            string ret = "SELECT Count(*) FROM " + _table + " " + this.getWhere();
-            return srv.SingleValue(ret, this.where.paramlist).asInt;
+            this.setfields("Count(*) as cnt");
+            return this.SingleValue().asInt;
         }
 
         public Field Insert()
@@ -1028,7 +962,7 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
 
         public void Update()
         {
-            List<string> IdList = this.srv.getSchema(_table).fields.Where(q => q.isIdentity).Select(z => z.FieldName).ToList();
+            List<string> IdList = this.srv.getSchema(_table).fields.Where( q => q.isIdentity || (q.FieldName.ToLower() == "id") ).Select(z => z.FieldName).ToList();
 
             QueryParamList pa = new QueryParamList();
             string ret = "UPDATE " + _table + " SET ";
@@ -1300,373 +1234,8 @@ WHERE t.name=@tname"), new QueryParamList("tname", tname));
         }
     }
 
-    public class SelectQuery : Query
-    {
-        internal string _row = "";
-        internal string _sort = "";
-        internal Storage.Core.DataAdapter _adapter;
-
-        public SelectQuery(SqlService service = null) : base(service) { }
-
-        public SelectQuery adapter(Storage.Core.DataAdapter a)
-        {
-            this._adapter = a;
-            return this;
-        }
-
-        public new SelectQuery table(string t)
-        {
-            base.table(t);
-            return this;
-        }
-
-        public new SelectQuery where(string t, List<SqlParameter> p)
-        {
-            base.where(t, p);
-            return this;
-        }
-
-        public new SelectQuery where(WE c)
-        {
-            base.where(c);
-            return this;
-        }
-
-        public new SelectQuery ById(long id)
-        {
-            base.ById(id);
-            return this;
-        }
-
-        public SelectQuery sort(string t)
-        {
-            this._sort = t;
-            return this;
-        }
-
-        public SelectQuery row(string t)
-        {
-            this._row = t;
-            return this;
-        }
-
-        public new SelectQuery fields(params string[] f)
-        {
-            this._fields = f.ToList();
-            return this;
-        }
-
-        public new SelectQuery addFields(params string[] f)
-        {
-            this._fields.AddRange(f);
-            return this;
-        }
-
-        public override string getSql()
-        {
-            string ret = "SELECT ";
-
-            if (_row.Trim().Length > 0)
-            {
-                ret += " ROW_NUMBER() OVER (ORDER BY " + _row + ") AS row ,";
-            }
-
-            if (_fields.Count == 0)
-            {
-                ret += " * ,";
-            }
-            else
-            {
-                _fields.ForEach(t => ret += t + ",");
-            }
-
-            ret = ret.TrimEnd(',');
-
-            ret += " FROM " + _table + " " + this.getWhere();
-
-
-            if (_sort.Trim().Length > 0)
-            {
-                if (!_sort.Trim().StartsWith(" ORDER BY", StringComparison.OrdinalIgnoreCase))
-                {
-                    ret += " ORDER BY ";
-                }
-                ret += _sort;
-            }
-
-            return ret;
-        }
-
-        public DataList<DataStore> Execute()
-        {
-            var z = this.service.ExecuteRead(this);
-            z.Adapter = this._adapter;
-            return z;
-        }
-
-        public DataStore SingleRow(IQuery q, QueryParamList p = null)
-        {
-            var z = this.service.SingleRow(this);
-            z.Adapter = this._adapter;
-            return z;
-        }
-
-        public Field SingleValue(IQuery q, QueryParamList p = null)
-        {
-            return this.service.SingleValue(this);
-        }
-
-    }
-
-    public class UpdateQuery : Query
-    {
-        public DataStore _store = null;
-
-        public UpdateQuery(SqlService service = null) : base(service) { }
-
-        public new UpdateQuery table(string t)
-        {
-            base.table(t);
-            return this;
-        }
-
-        public new UpdateQuery where(string t, List<SqlParameter> p)
-        {
-            base.where(t, p);
-            return this;
-        }
-
-        public new UpdateQuery where(WE c)
-        {
-            base.where(c);
-            return this;
-        }
-
-        public new UpdateQuery ById(long id)
-        {
-            base.ById(id);
-            return this;
-        }
-
-        public new UpdateQuery fields(params string[] f)
-        {
-            this._fields = f.ToList();
-            return this;
-        }
-
-        public new UpdateQuery addFields(params string[] f)
-        {
-            this._fields.AddRange(f);
-            return this;
-        }
-
-        public UpdateQuery store(DataStore store)
-        {
-            this._store = store;
-            return this;
-        }
-
-        public UpdateQuery set(string fn, object value, FieldType type = FieldType.Data)
-        {
-            if (this._store == null)
-            {
-                this._store = new DataStore();
-            }
-            _store.set(fn, value, type);
-            return this;
-        }
-
-        public override string getSql()
-        {
-            string ret = "UPDATE " + _table + " SET ";
-
-            _store.getAll().ForEach(t =>
-            {
-
-                //if (t.fieldType != FieldType.DBValue && t.fieldType != FieldType.Data)
-                //{
-                //    return;
-                //}
-
-                //if (_fields.Count > 0)
-                //{
-                if (!_fields.Contains(t.fn, StringComparer.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-                //}
-
-                ret += " [" + t.fn + "] = ";
-                if (t.isNull)
-                {
-                    ret += " null";
-                }
-                else if (t.fieldType == FieldType.DBValue)
-                {
-                    ret += " " + t.value.ToString();
-                }
-                else
-                {
-                    ret += " @" + t.fn + " ";
-                    this.getParamList().add(t.fn, t.value);
-                }
-
-                ret += ",";
-            });
-
-            ret = ret.TrimEnd(',') + this.getWhere();
-
-            return ret;
-        }
-
-        public void Execute()
-        {
-            this.service.Execute(this);
-        }
-    }
-
-    public class InsertQuery : Query
-    {
-        public DataStore _store = null;
-
-        public InsertQuery(SqlService service = null) : base(service) { }
-
-        public new InsertQuery table(string t)
-        {
-            base.table(t);
-            return this;
-        }
-
-        public InsertQuery store(DataStore store)
-        {
-            this._store = store;
-            return this;
-        }
-
-        public new InsertQuery fields(params string[] f)
-        {
-            this._fields = f.ToList();
-            return this;
-        }
-
-        public new InsertQuery addFields(params string[] f)
-        {
-            this._fields.AddRange(f);
-            return this;
-        }
-
-        public override string getSql()
-        {
-            string ret = "INSERT INTO " + _table;
-            string f = "", v = "";
-
-            _store.getAll().ForEach(t =>
-            {
-                //if (t.fieldType != FieldType.DBValue && t.fieldType != FieldType.Data)
-                //{
-                //    return;
-                //}
-
-                //if (_fields.Count > 0)
-                //{
-                if (!_fields.Contains(t.fn, StringComparer.OrdinalIgnoreCase))
-                {
-                    return;
-                }
-                //}
-
-                f += " [" + t.fn + "] ,";
-
-                if (t.isNull)
-                {
-                    v += " null,";
-                }
-                else if (t.fieldType == FieldType.DBValue)
-                {
-                    v += " " + t.value.ToString() + ",";
-                }
-                else
-                {
-                    v += " @" + t.fn + ",";
-                    this.getParamList().add(t.fn, t.value);
-                }
-
-            });
-
-            f = f.TrimEnd(',');
-            v = v.TrimEnd(',');
-
-            return ret + " ( " + f + " ) VALUES ( " + v + " );\n SELECT SCOPE_IDENTITY();";
-        }
-
-        public Field Execute()
-        {
-            return this.service.SingleValue(this);
-        }
-
-    }
-
-    public class DeleteQuery : Query
-    {
-        public DeleteQuery(SqlService service = null) : base(service) { }
-
-        public new DeleteQuery table(string t)
-        {
-            base.table(t);
-            return this;
-        }
-
-        public new DeleteQuery where(string t, List<SqlParameter> p)
-        {
-            base.where(t, p);
-            return this;
-        }
-
-        public new DeleteQuery where(WE c)
-        {
-            base.where(c);
-            return this;
-        }
-
-        public new DeleteQuery ById(long id)
-        {
-            base.ById(id);
-            return this;
-        }
-
-        public override string getSql()
-        {
-            return "DELETE FROM " + _table + this.getWhere();
-        }
-
-        public void Execute()
-        {
-            this.service.Execute(this);
-        }
-
-    }
-
-
     public struct DbTypeInfo
     {
-        //public static SqlParameter newParameter(string pName, object value, SqlDbType type
-        //    , bool? condition = null, Object falseValue = null, ParameterDirection dir = ParameterDirection.Input)
-        //{
-        //    SqlParameter result = new SqlParameter();
-        //    result.ParameterName = pName;
-        //    result.SqlDbType = type;
-        //    result.Direction = dir;
-        //    result.Value = value;
-
-        //    if (condition.HasValue && condition.Value == false)
-        //    {
-        //        result.Value = falseValue;
-        //    }
-
-
-        //    return result;
-        //}
-
         public static SqlParameter newParameter(string pName, object value)
         {
             SqlParameter result = new SqlParameter();
